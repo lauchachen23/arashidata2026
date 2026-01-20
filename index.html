@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arashi Master Dashboard 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --success: #22c55e; --danger: #ef4444;
+            --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b;
+            --winner-bg: #eff6ff; --soft-green: #ecfdf5;
+            --daily-color: #22c55e; 
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; font-size: 11px; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; padding-bottom: 40px; }
+        
+        .top-bar {
+            display: grid; grid-template-columns: 1.2fr 1fr 1fr; align-items: center;
+            background: #0f172a; color: white; padding: 12px 25px 20px; border-radius: 12px 12px 0 0;
+            position: relative; overflow: hidden; height: 75px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .top-bar::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 60px; height: 60px;
+            background: radial-gradient(circle at top left, rgba(255,255,255,0.4), transparent 70%);
+            pointer-events: none; z-index: 4; border-top-left-radius: 12px;
+        }
+
+        .top-bar::after {
+            content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 60px;
+            background: radial-gradient(circle at top right, rgba(255,255,255,0.4), transparent 70%);
+            pointer-events: none; z-index: 4; border-top-right-radius: 12px;
+        }
+
+        #season-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; opacity: 0.9; }
+        .shooting-stars-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: 2; }
+        .star { position: absolute; top: -2px; right: -10%; width: 120px; height: 2px; background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent); border-radius: 100%; filter: drop-shadow(0 0 6px #fff); transform: rotate(-25deg); opacity: 0; }
+        .shooting { animation: shoot 2.5s ease-out forwards; }
+        @keyframes shoot {
+            0% { transform: translateX(0) translateY(0) rotate(-25deg) scale(0); opacity: 1; }
+            20% { transform: translateX(-100px) translateY(40px) rotate(-25deg) scale(1); opacity: 1; }
+            100% { transform: translateX(-800px) translateY(320px) rotate(-25deg) scale(0.5); opacity: 0; }
+        }
+
+        .top-bar > *:not(.progress-wrapper):not(#season-canvas):not(.shooting-stars-container) { position: relative; z-index: 10; }
+        .progress-wrapper { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.05); z-index: 5; }
+        #progress-bar { height: 100%; width: 0%; background: var(--daily-color); transition: width 0.5s linear, background 0.5s ease; position: relative; }
+        
+        #progress-bar::after {
+            content: ''; position: absolute; right: -4px; top: 50%; transform: translateY(-50%);
+            width: 10px; height: 10px; background: #fff; border-radius: 50%;
+            box-shadow: 0 0 10px 2px #fff, 0 0 20px 4px var(--daily-color);
+            animation: pulse 3.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translateY(-50%) scale(1); box-shadow: 0 0 10px 2px #fff, 0 0 10px 2px var(--daily-color); }
+            50% { transform: translateY(-50%) scale(1.4); box-shadow: 0 0 15px 5px #fff, 0 0 25px 8px var(--daily-color); }
+            100% { transform: translateY(-50%) scale(1); box-shadow: 0 0 10px 2px #fff, 0 0 10px 2px var(--daily-color); }
+        }
+
+        .profile-section { display: flex; align-items: center; gap: 12px; }
+        .profile-img { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #60a5fa; object-fit: cover; background: #1e293b; }
+        #clock { font-size: 1.4rem; font-weight: bold; color: #60a5fa; font-family: 'Courier New', monospace; }
+        .turno-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; font-weight: bold; }
+        .turno-inputs { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.08); padding: 4px 12px; border-radius: 8px; }
+        .turno-input { background: transparent; color: #fff; border: none; font-size: 0.85rem; font-weight: bold; width: 70px; text-align: center; }
+
+        .unified-control-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #fff; padding: 10px 15px; border: 1px solid #e2e8f0;
+            border-top: none; border-radius: 0 0 12px 12px; margin-bottom: 15px;
+        }
+
+        h2 { margin: 15px 0 10px; border-left: 5px solid var(--primary); padding-left: 12px; font-size: 0.95rem; color: #334155; display: flex; justify-content: space-between; align-items: center;}
+        .card { background: var(--card-bg); padding: 12px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(65px, 1fr)); gap: 6px; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-radius: 8px; }
+        input, select, button { padding: 5px; border-radius: 5px; border: 1px solid #cbd5e1; font-size: 0.7rem; width: 100%; box-sizing: border-box; }
+        button { background: var(--primary); color: #fff; cursor: pointer; border: none; font-weight: bold; }
+        .general-stats { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .stat-box-mini { background: #f1f5f9; padding: 4px 10px; border-radius: 20px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 6px; font-size: 0.65rem; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 6px 3px; border-bottom: 1px solid #eef2f6; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.65rem; }
+        th { background: #f8fafc; color: #64748b; font-size: 0.55rem; text-transform: uppercase; }
+        .up { color: var(--success); font-weight: bold; } .down { color: var(--danger); font-weight: bold; }
+        .first-place { background-color: var(--winner-bg) !important; font-weight: bold; }
+        .row-meta { background-color: var(--soft-green) !important; }
+        .meta-tag { background: #16a34a; color: white; padding: 2px 5px; border-radius: 4px; font-size: 0.55rem; font-weight: bold; }
+        .action-btn { border: none; background: none; cursor: pointer; font-size: 0.8rem; width: auto; display: inline-block; padding: 0 1px; }
+
+        .editable { cursor: pointer; transition: background 0.2s; }
+        .editable:hover { background: rgba(37, 99, 235, 0.05); outline: 1px dashed var(--primary); }
+
+        .search-container-modern { max-width: 160px; width: 100%; }
+        .search-input-modern { border: 1px solid #cbd5e1 !important; border-radius: 6px !important; padding: 6px 10px !important; font-size: 0.75rem !important; }
+
+        #celebrationModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.85); display: none;
+            justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background: #fff; padding: 40px; border-radius: 30px; text-align: center;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4); animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border: 4px solid var(--success);
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="celebrationModal">
+    <div class="modal-content">
+        <h1 style="font-size: 4rem; margin:0">🚀✨🎉</h1>
+        <h2 style="border:none; margin:15px 0; font-size: 2rem; color: var(--primary)">¡MISIÓN CUMPLIDA!</h2>
+        <p style="font-size: 1.2rem; color: #475569; font-weight: bold;">Jornada finalizada con éxito.</p>
+        <button onclick="document.getElementById('celebrationModal').style.display='none'" style="margin-top:25px; padding: 12px 30px; background: var(--success); font-size: 1rem; border-radius: 15px; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4)">¡A DISFRUTAR! 😎</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="top-bar">
+        <canvas id="season-canvas"></canvas>
+        <div class="shooting-stars-container" id="stars-container"></div>
+        <div class="profile-section">
+            <img src="k.jpg" class="profile-img" onerror="this.src='https://ui-avatars.com/api/?name=KK&background=2563eb&color=fff'">
+            <div><div class="turno-label">By Kkamasushu 2026</div><div id="clock">00:00:00</div></div>
+        </div>
+        <div class="turno-container">
+            <div class="turno-label">Rango de Turno</div>
+            <div class="turno-inputs">
+                <input type="time" id="sS" class="turno-input" value="08:00" onchange="saveConfig()">
+                <span style="opacity: 0.3;">➔</span>
+                <input type="time" id="sE" class="turno-input" value="18:00" onchange="saveConfig()">
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div id="sync-status" style="font-size: 8px; margin-bottom: 2px;">Conectando...</div>
+            <input type="date" id="masterDate" onchange="loadDataByDate()" style="width:110px; background:var(--primary); color:white; border:none; padding:3px; border-radius:6px; font-weight:bold; text-align:center;">
+        </div>
+        <div class="progress-wrapper"><div id="progress-bar"></div></div>
+    </div>
+
+    <div class="unified-control-bar">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button onclick="exportData()" style="width:auto; padding:4px 10px; font-size:0.6rem; background:#64748b; border-radius: 6px;">📥 Backup</button>
+            <button onclick="clonarAyer()" style="width:auto; padding:4px 10px; font-size:0.6rem; background:#0ea5e9; border-radius: 6px;">📋 Clonar Cuentas de Ayer</button>
+            <h2 style="margin: 0; border: none; padding: 0;">Cash Goals</h2>
+        </div>
+        <div class="search-container-modern">
+            <input type="text" id="universalSearch" class="search-input-modern" placeholder="🔍 Buscar..." onkeyup="searchUniversal()">
+        </div>
+    </div>
+
+    <div id="searchBonusBox" class="card" style="margin-bottom: 15px; display:none">
+        <div id="metaCounter"></div>
+        <div style="height: 90px; width: 100%;"><canvas id="bonusChart"></canvas></div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid" id="cgForm">
+            <select id="cgEtapa"><option>S-2</option><option>S-1</option><option>S0</option><option>S1</option><option>S2</option></select>
+            <input id="cgCuenta" placeholder="Cta"> <input id="cgAsesor" placeholder="Asesor">
+            <input id="cgCasos" type="number" placeholder="Cas" oninput="calcCGPct()">
+            <input id="cgPagos" type="number" placeholder="Pag" oninput="calcCGPct()"> 
+            <input id="cgStat" type="text" placeholder="%" readonly style="background:#e2e8f0">
+            <input id="cgPromesas" type="number" placeholder="Prom"> <input id="cgHora" type="time">
+            <button onclick="saveItem('cg')" id="btn-cg">💾</button>
+        </div>
+        <table>
+            <thead><tr><th style="width:35px">Etp</th><th>Cta</th><th>Asesor</th><th>Cas</th><th>Pag</th><th>%</th><th>Prom</th><th>Hora</th><th>Meta</th><th>Bono</th><th>Acc</th></tr></thead>
+            <tbody id="cgBody"></tbody>
+        </table>
+        <div id="cgTotalBonos" style="margin-top:10px; display:flex; gap:4px; flex-wrap:wrap"></div>
+    </div>
+
+    <h2>Finanzas Ágiles</h2>
+    <div class="card">
+        <div class="general-stats">
+            <div class="stat-box-mini">D-1 Avg: <span id="avg-D1">0%</span></div>
+            <div class="stat-box-mini">S1 Avg: <span id="avg-S1">0%</span></div>
+            <div class="stat-box-mini" style="border-color: #a855f7;">What If: <span id="avg-QZ" style="color:#a855f7">0%</span></div>
+        </div>
+        <div class="form-grid" id="faForm">
+            <select id="faEtapa"><option>D-1</option><option>S1</option></select>
+            <input id="faCuenta" placeholder="Cta"> <input id="faAsesor" placeholder="Asesor">
+            <input id="faStat" type="number" placeholder="%ST">
+            <input id="faPromesas" type="number" placeholder="Pr"> <input id="faHora" type="time">
+            <button onclick="saveItem('fa')" id="btn-fa">💾</button>
+        </div>
+        <table>
+            <thead><tr><th>Etapa</th><th>Cta</th><th>Asesor</th><th>%ST</th><th>Prom</th><th>Hora</th><th>Meta</th><th>Bono</th><th>Acc</th></tr></thead>
+            <tbody id="faBody"></tbody>
+        </table>
+        <div id="faTotalBonos" style="margin-top:10px; display:flex; gap:4px; flex-wrap:wrap"></div>
+    </div>
+
+    <h2>Kimi – Competencia</h2>
+    <div class="card">
+        <div class="form-grid" id="kForm">
+            <select id="kPais"><option>🇳🇮 NICARAGUA</option><option>🇲🇽 MEXICO</option><option>🇪🇨 FYDI</option><option>🏅 Golden</option></select>
+            <select id="kEtapa"><option>S1A</option><option>S1B</option><option>S2</option><option>M1</option></select>
+            <input id="kPagos" type="number" placeholder="Monto"> <input id="kStat" type="number" placeholder="%ST">
+            <button onclick="saveItem('k')" id="btn-k">💾</button>
+        </div>
+        <table>
+            <thead><tr><th>País</th><th>Etapa</th><th>Monto</th><th>%ST</th><th>Acción</th></tr></thead>
+            <tbody id="kBody"></tbody>
+        </table>
+    </div>
+
+    <h2>Concentrado Líderes S1A / S1B</h2>
+    <div class="card">
+        <div class="form-grid" id="lsForm">
+            <select id="lsEtapa"><option>S1A</option><option>S1B</option></select>
+            <input id="lsCuenta" placeholder="Cta"> 
+            <input id="lsAsesor" placeholder="Asesor">
+            <input id="lsAsignado" type="number" placeholder="Asig" oninput="calcLSPct()">
+            <input id="lsRecuperado" type="number" placeholder="Recup" oninput="calcLSPct()">
+            <input id="lsStat" type="text" placeholder="%" readonly style="background:#e2e8f0">
+            <button onclick="saveItem('ls')" id="btn-ls">💾</button>
+        </div>
+        <table>
+            <thead><tr><th style="width:35px">Etp</th><th>Cta</th><th>Asesor</th><th>Asignado</th><th>Recup</th><th>%</th><th>Meta</th><th>Bono</th><th>Acc</th></tr></thead>
+            <tbody id="lsBody"></tbody>
+        </table>
+        <div id="lsTotalBonos" style="margin-top:10px; display:flex; gap:4px; flex-wrap:wrap"></div>
+    </div>
+</div>
+
+<script>
+const BIN_ID = '696d1a46ae596e708fe4f46c'; 
+const API_KEY = '$2a$10$6V2GVnIvlwQ3M1wA03L9C.yt8GOQCctGZVrP7y9mO92NCL.GP6eVO';
+const URL_BIN = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+let historial = {};
+let config = JSON.parse(localStorage.getItem("arashi_config") || '{"start":"08:00", "end":"18:00"}');
+let currentDate = "", editIdx = null, editType = null, bonusChart = null, alertTriggered = false;
+const nio = new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', minimumFractionDigits: 0 });
+
+async function sincronizarYGuardar() {
+    document.getElementById('sync-status').textContent = "Mezclando datos... 🔄";
+    try {
+        const res = await fetch(URL_BIN + '/latest', { headers: { 'X-Master-Key': API_KEY } });
+        const json = await res.json();
+        const nubeData = json.record;
+        if (nubeData[currentDate]) {
+            if (!historial[currentDate]) historial[currentDate] = nubeData[currentDate];
+        }
+        await fetch(URL_BIN, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+            body: JSON.stringify(historial)
+        });
+        document.getElementById('sync-status').textContent = "Nube: Online 🟢";
+    } catch (e) { 
+        document.getElementById('sync-status').textContent = "Error Sinc 🔴";
+    }
+}
+
+async function autoRefresco() {
+    try {
+        const res = await fetch(URL_BIN + '/latest', { headers: { 'X-Master-Key': API_KEY } });
+        const json = await res.json();
+        historial = json.record;
+        renderAll();
+        document.getElementById('sync-status').textContent = "Actualizado 🟢";
+    } catch (e) { console.log("Error en autorefresco"); }
+}
+
+function updateProgress() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+    const [hS, mS] = config.start.split(':'), [hE, mE] = config.end.split(':');
+    const dS = new Date(); dS.setHours(hS, mS, 0); const dE = new Date(); dE.setHours(hE, mE, 0);
+    let pct = Math.min(Math.max(((now - dS) / (dE - dS)) * 100, 0), 100);
+    document.getElementById('progress-bar').style.width = pct + "%";
+    if (pct >= 100 && !alertTriggered) { lanzarCelebracion(); alertTriggered = true; } 
+    else if (pct < 100) { alertTriggered = false; }
+}
+
+function lanzarCelebracion() {
+    document.getElementById('celebrationModal').style.display = 'flex';
+    const final = Date.now() + 6000;
+    const interval = setInterval(function() {
+        if (Date.now() > final) return clearInterval(interval);
+        confetti({ particleCount: 100, spread: 70, origin: { x: 0.1, y: 0.8 }, colors: ['#ff0000', '#ffd700', '#ffffff'] });
+        confetti({ particleCount: 100, spread: 70, origin: { x: 0.9, y: 0.8 }, colors: ['#00ff00', '#0000ff', '#ff00ff'] });
+    }, 400);
+}
+
+function clonarAyer() {
+    const dates = Object.keys(historial).sort().reverse();
+    const yesterday = dates.find(d => d < currentDate);
+    if (!yesterday) { alert("No se encontró historial anterior."); return; }
+    if (historial[currentDate].cg.length > 0 || historial[currentDate].fa.length > 0) {
+        if (!confirm("Ya hay datos hoy. ¿Deseas agregar las cuentas de ayer?")) return;
+    }
+    historial[yesterday].cg.forEach(x => { historial[currentDate].cg.push({ e: x.e, c: x.c, a: x.a, pct: 0, ca: 0, p: 0, pr: 0, h: "" }); });
+    historial[yesterday].fa.forEach(x => { historial[currentDate].fa.push({ e: x.e, c: x.c, a: x.a, pct: 0, pr: 0, h: "" }); });
+    if(historial[yesterday].ls) {
+        if(!historial[currentDate].ls) historial[currentDate].ls = [];
+        historial[yesterday].ls.forEach(x => { historial[currentDate].ls.push({ e: x.e, c: x.c, a: x.a, asig: x.asig, p: 0, pct: 0 }); });
+    }
+    sincronizarYGuardar();
+    renderAll();
+}
+
+function searchUniversal() {
+    const input = document.getElementById('universalSearch').value.toLowerCase();
+    const box = document.getElementById('searchBonusBox');
+    const counterDiv = document.getElementById('metaCounter');
+    if (input.length < 2) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    
+    let diasEnMetaStandard = 0; 
+    let semanalesGrafico = [0,0,0,0,0,0,0]; 
+    let nombreAsesor = "No encontrado";
+    let recupSemanalLideres = 0;
+    let etapaAsesor = "";
+    let esLider = false;
+
+    // Recorremos todo el historial para sumar montos o días
+    Object.keys(historial).forEach(fecha => {
+        let registros = [
+            ...(historial[fecha].cg || []), 
+            ...(historial[fecha].fa || []), 
+            ...(historial[fecha].ls || [])
+        ];
+        
+        let match = registros.find(x => x.a.toLowerCase().includes(input));
+        
+        if(match) {
+            nombreAsesor = match.a;
+            etapaAsesor = match.e;
+            let d = new Date(fecha+"T00:00:00").getDay();
+            let indexDia = (d === 0 ? 6 : d - 1);
+
+            // Verificamos si es registro de la nueva sección de Líderes
+            if(match.asig !== undefined) {
+                esLider = true;
+                recupSemanalLideres += (match.p || 0); // Suma monto recuperado
+                if(checkMeta(match, 'ls')) semanalesGrafico[indexDia] = 1;
+            } else {
+                // Asesores normales: Contamos días en meta
+                if(checkMeta(match, match.p !== undefined ? 'cg' : 'fa')) {
+                    diasEnMetaStandard++;
+                    semanalesGrafico[indexDia] = 1;
+                }
+            }
+        }
+    });
+
+    let premioSemanal = 0;
+    let detalleBono = "";
+
+    if(esLider) {
+        // Lógica de S1A y S1B por MONTOS
+        if(etapaAsesor === 'S1A') {
+            if(recupSemanalLideres >= 45000) premioSemanal = 500;
+            else if(recupSemanalLideres >= 30000) premioSemanal = 300;
+            detalleBono = `Recuperación Semanal: <b>${nio.format(recupSemanalLideres)}</b>`;
+        } else if(etapaAsesor === 'S1B') {
+            if(recupSemanalLideres >= 35000) premioSemanal = 500;
+            else if(recupSemanalLideres >= 18000) premioSemanal = 300;
+            detalleBono = `Recuperación Semanal: <b>${nio.format(recupSemanalLideres)}</b>`;
+        } else {
+            detalleBono = `Etapa ${etapaAsesor} no tiene bono por monto.`;
+        }
+    } else {
+        // Lógica tradicional por DÍAS
+        premioSemanal = diasEnMetaStandard >= 6 ? 500 : (diasEnMetaStandard >= 4 ? 300 : 0);
+        detalleBono = `Días en Meta: <b>${diasEnMetaStandard}/6</b>`;
+    }
+
+    counterDiv.innerHTML = `
+        <b style="color:var(--primary); font-size:1.1rem">${nombreAsesor}</b> (${etapaAsesor})<br>
+        ${detalleBono}<br>
+        Bono Semanal Total: <b style="color:#16a34a; font-size:1.1rem">${nio.format(premioSemanal)}</b>
+    `;
+    renderBonusChart(semanalesGrafico);
+}
+
+function renderBonusChart(dataPoints) {
+    const ctx = document.getElementById('bonusChart').getContext('2d');
+    if (bonusChart) bonusChart.destroy();
+    bonusChart = new Chart(ctx, {
+        type: 'bar', data: { labels: ['L', 'M', 'M', 'J', 'V', 'S', 'D'], datasets: [{ data: dataPoints, backgroundColor: dataPoints.map(v => v > 0 ? '#22c55e' : '#e2e8f0'), borderRadius: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { display: false, max: 1.2 }, x: { grid: { display: false }, ticks: { font: { size: 8 } } } }, plugins: { legend: { display: false } } }
+    });
+}
+
+function inlineEdit(type, index, field, element) {
+    element.contentEditable = "true";
+    element.focus();
+    element.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); element.blur(); } };
+    element.onblur = () => {
+        element.contentEditable = "false";
+        let newValue = element.innerText.trim();
+        if (['p', 'ca', 'pr', 'pct', 'asig'].includes(field)) newValue = parseFloat(newValue.replace('%', '').replace(/,/g,'')) || 0;
+        historial[currentDate][type][index][field] = newValue;
+        
+        // Recalcular %
+        const item = historial[currentDate][type][index];
+        if (type === 'cg' && (field === 'ca' || field === 'p')) {
+            item.pct = item.ca > 0 ? parseFloat(((item.p / item.ca) * 100).toFixed(1)) : 0;
+        } else if (type === 'ls' && (field === 'asig' || field === 'p')) {
+            item.pct = item.asig > 0 ? parseFloat(((item.p / item.asig) * 100).toFixed(1)) : 0;
+        }
+
+        sincronizarYGuardar();
+        renderAll();
+    };
+}
+
+function renderAll() {
+    ['cg', 'fa', 'k', 'ls'].forEach(t => {
+        let data = historial[currentDate] ? (historial[currentDate][t] || []) : [], body = document.getElementById(t+'Body'), bonosTotal = {}, avgs = {};
+        if(!body) return;
+        body.innerHTML = "";
+
+        const etapas = (t === 'fa') ? ['D-1', 'S1'] : (t === 'cg' ? ['S-2','S-1','S0','S1','S2'] : (t === 'ls' ? ['S1A', 'S1B'] : []));
+        etapas.forEach(e => {
+            let items = data.filter(d => d.e === e);
+            let field = (t==='ls') ? 'p' : ((t==='cg' && (e==='S1'||e==='S2')) ? 'p' : 'pct');
+            avgs[e] = items.length ? (items.reduce((a, b) => a + b[field], 0) / items.length) : 0;
+            if(t==='fa') { let el = document.getElementById('avg-' + e.replace('-','')); if(el) el.textContent = avgs[e].toFixed(1) + "%"; }
+        });
+
+        data.forEach((x, i) => {
+            let fieldIcon = (t==='ls') ? 'p' : ((t==='fa'||t==='k') ? 'pct' : ((x.e==='S1'||x.e==='S2')?'p':'pct'));
+            let itemsEtapa = data.filter(s => s.e === x.e).sort((a,b) => b[fieldIcon] - a[fieldIcon]);
+            let rank = itemsEtapa.findIndex(s => s === x) + 1;
+            let medalla = "";
+            if (x[fieldIcon] > 0) {
+                if (rank === 1) medalla = "🥇"; else if (rank === 2) medalla = "🥈"; else if (rank === 3) medalla = "🥉";
+            }
+            let enMeta = checkMeta(x, t);
+            let iconoFinal = enMeta ? "🏆 " : medalla + " ";
+            let tnd = x[fieldIcon] > (avgs[x.e]||0) ? '<span class="up">↑</span>' : (x[fieldIcon] < (avgs[x.e]||0) ? '<span class="down">↓</span>' : "—");
+            
+            let bono = 0;
+            if (t === 'cg') {
+                if (x.e === 'S-2') {
+                    if (x.p >= 10 && x.p < 11) bono = 100; else if (x.p >= 11 && x.p < 15) bono = 150; else if (x.p === 15) bono = 200; else if (x.p > 15) bono = 250;
+                } else if (x.e === "S-1" || x.e === "S0") {
+                    bono = x.pct < 50 ? 0 : 150 + (Math.floor((x.pct - 50) / 5) * 50);
+                } else if (x.e === 'S1') bono = x.p * 50;
+                else if (x.e === 'S2') bono = x.p >= 1 ? 150 + ((x.p - 1) * 80) : 0;
+            } else if (t === 'fa') {
+                if (x.e === 'S1') { bono = x.pct < 10 ? 0 : 100 + (Math.floor((x.pct - 10) / 5) * 50); }
+                else if (x.e === 'D-1') { bono = x.pct < 55 ? 0 : 100 + (Math.floor((x.pct - 55) / 5) * 50); }
+            } else if (t === 'ls') {
+                if (x.e === 'S1A') {
+                    if(x.p >= 10000) bono = 250;
+                    else if(x.p > 6500) bono = 200;
+                    else if(x.p >= 5000) bono = 150;
+                    else if(x.p >= 4000) bono = 100;
+                } else if (x.e === 'S1B') {
+                    if(x.p >= 6500) bono = 250;
+                    else if(x.p > 3000) bono = 200;
+                    else if(x.p >= 2500) bono = 150;
+                    else if(x.p >= 2000) bono = 100;
+                }
+            }
+
+            if(bono > 0) bonosTotal[x.e] = (bonosTotal[x.e] || 0) + bono;
+
+            let row = `<tr class="${rank===1 && x[fieldIcon]>0?'first-place':(enMeta?'row-meta':'')}">`;
+            if(t==='cg') row += `<td>${x.e}</td><td class="editable" onclick="inlineEdit('cg',${i},'c',this)">${x.c}</td><td style="text-align:left" class="editable" onclick="inlineEdit('cg',${i},'a',this)">${iconoFinal}${tnd} ${x.a}</td><td class="editable" onclick="inlineEdit('cg',${i},'ca',this)">${x.ca||0}</td><td class="editable" onclick="inlineEdit('cg',${i},'p',this)">${x.p}</td><td>${x.pct}%</td><td class="editable" onclick="inlineEdit('cg',${i},'pr',this)">${x.pr}</td><td class="editable" onclick="inlineEdit('cg',${i},'h',this)">${x.h}</td><td>${enMeta?'<span class="meta-tag">META</span>':'-'}</td><td>${nio.format(bono)}</td>`;
+            else if(t==='fa') row += `<td>${x.e}</td><td class="editable" onclick="inlineEdit('fa',${i},'c',this)">${x.c}</td><td style="text-align:left" class="editable" onclick="inlineEdit('fa',${i},'a',this)">${iconoFinal}${tnd} ${x.a}</td><td class="editable" onclick="inlineEdit('fa',${i},'pct',this)">${x.pct}%</td><td class="editable" onclick="inlineEdit('fa',${i},'pr',this)">${x.pr}</td><td class="editable" onclick="inlineEdit('fa',${i},'h',this)">${x.h}</td><td>${enMeta?'<span class="meta-tag">META</span>':'-'}</td><td>${bono > 0 ? nio.format(bono) : '-'}</td>`;
+            else if(t==='k') row += `<td class="editable" onclick="inlineEdit('k',${i},'pa',this)">${x.pa}</td><td>${x.e}</td><td class="editable" onclick="inlineEdit('k',${i},'p',this)">${iconoFinal}${tnd} ${x.p.toLocaleString()}</td><td class="editable" onclick="inlineEdit('k',${i},'pct',this)">${x.pct}%</td>`;
+            else if(t==='ls') row += `<td>${x.e}</td><td class="editable" onclick="inlineEdit('ls',${i},'c',this)">${x.c}</td><td style="text-align:left" class="editable" onclick="inlineEdit('ls',${i},'a',this)">${iconoFinal}${tnd} ${x.a}</td><td class="editable" onclick="inlineEdit('ls',${i},'asig',this)">${x.asig.toLocaleString()}</td><td class="editable" onclick="inlineEdit('ls',${i},'p',this)">${x.p.toLocaleString()}</td><td>${x.pct}%</td><td>${enMeta?'<span class="meta-tag">META</span>':'-'}</td><td>${bono > 0 ? nio.format(bono) : '-'}</td>`;
+            row += `<td><button class="action-btn" onclick="edit('${t}',${i})">✏️</button><button class="action-btn" onclick="del('${t}',${i})">🗑️</button></td></tr>`;
+            body.innerHTML += row;
+        });
+        if(document.getElementById(t+'TotalBonos')) document.getElementById(t+'TotalBonos').innerHTML = Object.keys(bonosTotal).map(e => `<span style="background:#fff; border:1px solid #7dd3fc; padding:2px 4px; border-radius:4px; font-size:0.55rem"><b>${e}:</b> ${nio.format(bonosTotal[e])}</span>`).join('');
+    });
+}
+
+function saveItem(t) {
+    let statInput = document.getElementById(t+'Stat');
+    let stat = statInput ? parseFloat(statInput.value.toString().replace('%','')) || 0 : 0;
+    
+    let obj = { e: document.getElementById(t+'Etapa').value, pct: stat, c: document.getElementById(t+'Cuenta')?document.getElementById(t+'Cuenta').value:'' };
+    
+    if (t === 'k') {
+        obj.pa = document.getElementById('kPais').value; obj.p = +document.getElementById('kPagos').value;
+    } else {
+        obj.a = document.getElementById(t+'Asesor').value;
+        if(t==='cg') { obj.pr = +document.getElementById('cgPromesas').value; obj.h = document.getElementById('cgHora').value; obj.p = +document.getElementById('cgPagos').value; obj.ca = +document.getElementById('cgCasos').value; }
+        if(t==='fa') { obj.pr = +document.getElementById('faPromesas').value; obj.h = document.getElementById('faHora').value; }
+        if(t==='ls') { obj.asig = +document.getElementById('lsAsignado').value; obj.p = +document.getElementById('lsRecuperado').value; }
+    }
+    
+    if(!historial[currentDate]) historial[currentDate] = { cg: [], fa: [], k: [], ls: [] };
+    if(!historial[currentDate].ls) historial[currentDate].ls = [];
+
+    if(editIdx!==null && editType===t) historial[currentDate][t][editIdx]=obj; else historial[currentDate][t].push(obj);
+    
+    sincronizarYGuardar();
+    editIdx = null; renderAll(); clear(t);
+}
+
+function calcCGPct() { const c = parseFloat(document.getElementById('cgCasos').value) || 0, p = parseFloat(document.getElementById('cgPagos').value) || 0; document.getElementById('cgStat').value = c > 0 ? ((p / c) * 100).toFixed(1) + "%" : ""; }
+function calcLSPct() { const a = parseFloat(document.getElementById('lsAsignado').value) || 0, r = parseFloat(document.getElementById('lsRecuperado').value) || 0; document.getElementById('lsStat').value = a > 0 ? ((r / a) * 100).toFixed(1) + "%" : ""; }
+function loadDataByDate() { currentDate = document.getElementById('masterDate').value; if (!historial[currentDate]) historial[currentDate] = { cg: [], fa: [], k: [], ls: [] }; if(!historial[currentDate].ls) historial[currentDate].ls = []; renderAll(); }
+
+function checkMeta(x, t) { 
+    if (t === 'cg') {
+        if (x.e === 'S-2') return x.p >= 10; 
+        if (x.e === 'S-1' || x.e === 'S0') return x.pct >= 50;
+        if (x.e === 'S1') return x.p >= 3;
+        if (x.e === 'S2') return x.p >= 1; 
+    }
+    if (t === 'fa') return (x.e === 'D-1' && x.pct >= 55) || (x.e === 'S1' && x.pct >= 10); 
+    if (t === 'ls') return (x.e === 'S1A' && x.p >= 4000) || (x.e === 'S1B' && x.p >= 2000);
+    return t === 'k' && x.pct >= 90; 
+}
+
+function edit(t, i) { 
+    editIdx=i; editType=t; let d=historial[currentDate][t][i]; 
+    document.getElementById(t+'Etapa').value = d.e; 
+    document.getElementById(t+'Stat').value = d.pct + (t==='ls'?'':'%'); 
+    if(t!=='k') { document.getElementById(t+'Asesor').value=d.a; document.getElementById(t+'Cuenta').value=d.c; }
+    if(t==='cg'){ document.getElementById('cgPagos').value=d.p; document.getElementById('cgCasos').value=d.ca; document.getElementById('cgPromesas').value=d.pr; document.getElementById('cgHora').value=d.h; }
+    else if(t==='fa'){ document.getElementById('faPromesas').value=d.pr; document.getElementById('faHora').value=d.h; }
+    else if(t==='k'){ document.getElementById('kPais').value=d.pa; document.getElementById('kPagos').value=d.p; }
+    else if(t==='ls'){ document.getElementById('lsAsignado').value=d.asig; document.getElementById('lsRecuperado').value=d.p; }
+    document.getElementById('btn-'+t).textContent = "🔄"; 
+}
+function del(t, i){ if(confirm('¿Borrar?')){ historial[currentDate][t].splice(i,1); sincronizarYGuardar(); renderAll(); } }
+function clear(t){ document.querySelectorAll(`#${t}Form input`).forEach(i=>i.value=""); document.getElementById('btn-'+t).textContent="💾"; editIdx=null; }
+function saveConfig(){ config.start=document.getElementById('sS').value; config.end=document.getElementById('sE').value; localStorage.setItem("arashi_config", JSON.stringify(config)); alertTriggered = false;}
+function exportData() { const blob = new Blob([JSON.stringify(historial, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${currentDate}.json`; a.click(); }
+
+async function init() {
+    try {
+        const res = await fetch(URL_BIN + '/latest', { headers: { 'X-Master-Key': API_KEY } });
+        const json = await res.json();
+        historial = json.record;
+        document.getElementById('sync-status').textContent = "Nube: Online 🟢";
+    } catch (e) {
+        document.getElementById('sync-status').textContent = "Error Inicial 🔴";
+        historial = {};
+    }
+
+    document.getElementById('masterDate').value = new Date().toISOString().split('T')[0];
+    loadDataByDate(); 
+    setInterval(updateProgress, 1000);
+    setInterval(autoRefresco, 30000);
+
+    const c = document.getElementById('season-canvas'); const ctx = c.getContext('2d'); let pts = [];
+    c.width = c.offsetWidth; c.height = c.offsetHeight;
+    for(let i=0; i<45; i++) pts.push({ x: Math.random()*c.width, y: Math.random()*c.height, r: Math.random()*2+1, v: Math.random()*0.4+0.1 });
+    function draw() { ctx.clearRect(0,0,c.width,c.height); ctx.fillStyle="rgba(255,255,255,0.8)"; pts.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); p.y+=p.v; if(p.y>c.height) p.y=-5; }); requestAnimationFrame(draw); }
+    draw();
+    setInterval(() => { const s = document.createElement('div'); s.className='star'; s.style.top=Math.random()*50+'px'; s.style.right=Math.random()*20+'%'; document.getElementById('stars-container').appendChild(s); setTimeout(()=>s.classList.add('shooting'),50); setTimeout(()=>s.remove(),3000); }, 4000);
+}
+init();
+</script>
+</body>
+</html>
