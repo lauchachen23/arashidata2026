@@ -326,7 +326,6 @@ function searchUniversal() {
     let etapaAsesor = "";
     let esLider = false;
 
-    // Recorremos todo el historial para sumar montos o días
     Object.keys(historial).forEach(fecha => {
         let registros = [
             ...(historial[fecha].cg || []), 
@@ -342,13 +341,11 @@ function searchUniversal() {
             let d = new Date(fecha+"T00:00:00").getDay();
             let indexDia = (d === 0 ? 6 : d - 1);
 
-            // Verificamos si es registro de la nueva sección de Líderes
             if(match.asig !== undefined) {
                 esLider = true;
-                recupSemanalLideres += (match.p || 0); // Suma monto recuperado
+                recupSemanalLideres += (match.p || 0);
                 if(checkMeta(match, 'ls')) semanalesGrafico[indexDia] = 1;
             } else {
-                // Asesores normales: Contamos días en meta
                 if(checkMeta(match, match.p !== undefined ? 'cg' : 'fa')) {
                     diasEnMetaStandard++;
                     semanalesGrafico[indexDia] = 1;
@@ -361,7 +358,6 @@ function searchUniversal() {
     let detalleBono = "";
 
     if(esLider) {
-        // Lógica de S1A y S1B por MONTOS
         if(etapaAsesor === 'S1A') {
             if(recupSemanalLideres >= 45000) premioSemanal = 500;
             else if(recupSemanalLideres >= 30000) premioSemanal = 300;
@@ -374,7 +370,6 @@ function searchUniversal() {
             detalleBono = `Etapa ${etapaAsesor} no tiene bono por monto.`;
         }
     } else {
-        // Lógica tradicional por DÍAS
         premioSemanal = diasEnMetaStandard >= 6 ? 500 : (diasEnMetaStandard >= 4 ? 300 : 0);
         detalleBono = `Días en Meta: <b>${diasEnMetaStandard}/6</b>`;
     }
@@ -406,7 +401,6 @@ function inlineEdit(type, index, field, element) {
         if (['p', 'ca', 'pr', 'pct', 'asig'].includes(field)) newValue = parseFloat(newValue.replace('%', '').replace(/,/g,'')) || 0;
         historial[currentDate][type][index][field] = newValue;
         
-        // Recalcular %
         const item = historial[currentDate][type][index];
         if (type === 'cg' && (field === 'ca' || field === 'p')) {
             item.pct = item.ca > 0 ? parseFloat(((item.p / item.ca) * 100).toFixed(1)) : 0;
@@ -480,7 +474,17 @@ function renderAll() {
             row += `<td><button class="action-btn" onclick="edit('${t}',${i})">✏️</button><button class="action-btn" onclick="del('${t}',${i})">🗑️</button></td></tr>`;
             body.innerHTML += row;
         });
-        if(document.getElementById(t+'TotalBonos')) document.getElementById(t+'TotalBonos').innerHTML = Object.keys(bonosTotal).map(e => `<span style="background:#fff; border:1px solid #7dd3fc; padding:2px 4px; border-radius:4px; font-size:0.55rem"><b>${e}:</b> ${nio.format(bonosTotal[e])}</span>`).join('');
+
+        if(document.getElementById(t+'TotalBonos')) {
+            let extraHTML = "";
+            if (t === 'ls') {
+                let recupS1A = data.filter(d => d.e === 'S1A').reduce((sum, item) => sum + (item.p || 0), 0);
+                let recupS1B = data.filter(d => d.e === 'S1B').reduce((sum, item) => sum + (item.p || 0), 0);
+                extraHTML += `<span style="background:#0f172a; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.55rem; margin-right:5px"><b>TOT RECUP S1A:</b> ${nio.format(recupS1A)}</span>`;
+                extraHTML += `<span style="background:#0f172a; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.55rem; margin-right:10px"><b>TOT RECUP S1B:</b> ${nio.format(recupS1B)}</span>`;
+            }
+            document.getElementById(t+'TotalBonos').innerHTML = extraHTML + Object.keys(bonosTotal).map(e => `<span style="background:#fff; border:1px solid #7dd3fc; padding:2px 4px; border-radius:4px; font-size:0.55rem"><b>${e}:</b> ${nio.format(bonosTotal[e])}</span>`).join('');
+        }
     });
 }
 
@@ -521,47 +525,45 @@ function checkMeta(x, t) {
     }
     if (t === 'fa') return (x.e === 'D-1' && x.pct >= 55) || (x.e === 'S1' && x.pct >= 10); 
     if (t === 'ls') return (x.e === 'S1A' && x.p >= 4000) || (x.e === 'S1B' && x.p >= 2000);
-    return t === 'k' && x.pct >= 90; 
 }
 
-function edit(t, i) { 
-    editIdx=i; editType=t; let d=historial[currentDate][t][i]; 
-    document.getElementById(t+'Etapa').value = d.e; 
-    document.getElementById(t+'Stat').value = d.pct + (t==='ls'?'':'%'); 
-    if(t!=='k') { document.getElementById(t+'Asesor').value=d.a; document.getElementById(t+'Cuenta').value=d.c; }
-    if(t==='cg'){ document.getElementById('cgPagos').value=d.p; document.getElementById('cgCasos').value=d.ca; document.getElementById('cgPromesas').value=d.pr; document.getElementById('cgHora').value=d.h; }
-    else if(t==='fa'){ document.getElementById('faPromesas').value=d.pr; document.getElementById('faHora').value=d.h; }
-    else if(t==='k'){ document.getElementById('kPais').value=d.pa; document.getElementById('kPagos').value=d.p; }
-    else if(t==='ls'){ document.getElementById('lsAsignado').value=d.asig; document.getElementById('lsRecuperado').value=d.p; }
-    document.getElementById('btn-'+t).textContent = "🔄"; 
-}
-function del(t, i){ if(confirm('¿Borrar?')){ historial[currentDate][t].splice(i,1); sincronizarYGuardar(); renderAll(); } }
-function clear(t){ document.querySelectorAll(`#${t}Form input`).forEach(i=>i.value=""); document.getElementById('btn-'+t).textContent="💾"; editIdx=null; }
-function saveConfig(){ config.start=document.getElementById('sS').value; config.end=document.getElementById('sE').value; localStorage.setItem("arashi_config", JSON.stringify(config)); alertTriggered = false;}
-function exportData() { const blob = new Blob([JSON.stringify(historial, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${currentDate}.json`; a.click(); }
+function edit(t, i) { editIdx = i; editType = t; let x = historial[currentDate][t][i]; document.getElementById(t+'Etapa').value = x.e; if(t==='k') { document.getElementById('kPais').value = x.pa; document.getElementById('kPagos').value = x.p; } else { document.getElementById(t+'Asesor').value = x.a; document.getElementById(t+'Cuenta').value = x.c; if(t==='cg'){ document.getElementById('cgCasos').value=x.ca; document.getElementById('cgPagos').value=x.p; document.getElementById('cgPromesas').value=x.pr; document.getElementById('cgHora').value=x.h; calcCGPct(); } if(t==='fa'){ document.getElementById('faStat').value=x.pct; document.getElementById('faPromesas').value=x.pr; document.getElementById('faHora').value=x.h; } if(t==='ls'){ document.getElementById('lsAsignado').value=x.asig; document.getElementById('lsRecuperado').value=x.p; calcLSPct(); } } }
+function del(t, i) { if (confirm("¿Eliminar?")) { historial[currentDate][t].splice(i, 1); sincronizarYGuardar(); renderAll(); } }
+function clear(t) { document.querySelectorAll(`#${t}Form input`).forEach(i => i.value = ""); }
+function saveConfig() { config.start = document.getElementById('sS').value; config.end = document.getElementById('sE').value; localStorage.setItem("arashi_config", JSON.stringify(config)); }
+function exportData() { const blob = new Blob([JSON.stringify(historial, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `arashi_backup_${currentDate}.json`; a.click(); }
 
 async function init() {
     try {
         const res = await fetch(URL_BIN + '/latest', { headers: { 'X-Master-Key': API_KEY } });
-        const json = await res.json();
-        historial = json.record;
-        document.getElementById('sync-status').textContent = "Nube: Online 🟢";
-    } catch (e) {
-        document.getElementById('sync-status').textContent = "Error Inicial 🔴";
-        historial = {};
-    }
-
+        historial = (await res.json()).record;
+    } catch (e) { historial = {}; }
     document.getElementById('masterDate').value = new Date().toISOString().split('T')[0];
-    loadDataByDate(); 
+    loadDataByDate();
     setInterval(updateProgress, 1000);
     setInterval(autoRefresco, 30000);
-
-    const c = document.getElementById('season-canvas'); const ctx = c.getContext('2d'); let pts = [];
-    c.width = c.offsetWidth; c.height = c.offsetHeight;
-    for(let i=0; i<45; i++) pts.push({ x: Math.random()*c.width, y: Math.random()*c.height, r: Math.random()*2+1, v: Math.random()*0.4+0.1 });
-    function draw() { ctx.clearRect(0,0,c.width,c.height); ctx.fillStyle="rgba(255,255,255,0.8)"; pts.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); p.y+=p.v; if(p.y>c.height) p.y=-5; }); requestAnimationFrame(draw); }
+    
+    const canvas = document.getElementById('season-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+    let particles = [];
+    for(let i=0; i<30; i++) particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, r: Math.random()*1.5+0.5, v: Math.random()*0.3+0.1 });
+    function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        particles.forEach(p => {
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+            p.y += p.v; if(p.y > canvas.height) p.y = -5;
+        });
+        requestAnimationFrame(draw);
+    }
     draw();
-    setInterval(() => { const s = document.createElement('div'); s.className='star'; s.style.top=Math.random()*50+'px'; s.style.right=Math.random()*20+'%'; document.getElementById('stars-container').appendChild(s); setTimeout(()=>s.classList.add('shooting'),50); setTimeout(()=>s.remove(),3000); }, 4000);
+    setInterval(() => {
+        const star = document.createElement('div'); star.className = 'star shooting';
+        star.style.top = Math.random()*50 + 'px'; star.style.right = '-120px';
+        document.getElementById('stars-container').appendChild(star);
+        setTimeout(() => star.remove(), 2500);
+    }, 4000);
 }
 init();
 </script>
